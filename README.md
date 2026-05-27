@@ -21,7 +21,7 @@ A sleek, modern notes-taking application built with **FastAPI** (backend) and va
 | Frontend | HTML5, CSS3 (custom properties), vanilla JS |
 | Database | PostgreSQL                                  |
 
-## Additional Note Fields (suggested)
+## Additional Note Fields 
 
 | Field         | Type    | Description                                |
 | ------------- | ------- | ------------------------------------------ |
