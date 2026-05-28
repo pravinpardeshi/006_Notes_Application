@@ -1,8 +1,9 @@
 import subprocess
+import tempfile
 from datetime import date
 from typing import List, Optional
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -58,6 +59,33 @@ def backup():
         media_type="application/sql",
         headers={"Content-Disposition": f'attachment; filename="notes_backup_{today}.sql"'},
     )
+
+
+@app.post("/api/restore")
+def restore(file: UploadFile = File(...)):
+    if not file.filename.endswith(".sql"):
+        raise HTTPException(400, "Only .sql files are accepted")
+    try:
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".sql", delete=False) as tmp:
+            tmp.write(file.file.read())
+            tmp_path = tmp.name
+        result = subprocess.run(
+            ["psql", "--dbname", DATABASE_URL, "--file", tmp_path, "--echo-errors"],
+            capture_output=True, text=True,
+        )
+        if result.returncode != 0:
+            raise HTTPException(500, f"Restore failed: {result.stderr[:500]}")
+        return {"message": "Restore successful"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Restore failed: {str(e)}")
+    finally:
+        try:
+            import os
+            os.unlink(tmp_path)
+        except Exception:
+            pass
 
 
 # ── Category CRUD ────────────────────────────────────────────────────────────
@@ -147,7 +175,7 @@ def list_notes(
     if search:
         pattern = f"%{search}%"
         q = q.filter(
-            Note.title.ilike(pattern) | Note.note_text.ilike(pattern)
+            Note.title.ilike(pattern) | Note.note_text.ilike(pattern) | Note.tags.ilike(pattern)
         )
     return q.order_by(Note.created_at.desc()).all()
 

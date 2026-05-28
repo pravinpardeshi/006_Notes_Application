@@ -74,10 +74,43 @@ themeToggle.addEventListener("click", () => {
   localStorage.setItem("theme", next);
 });
 
-/* ── Backup ────────────────────────────────────────────────────────────────── */
-const backupSection = $("#backupSection");
-backupSection.addEventListener("click", () => {
+/* ── Backup / Restore ──────────────────────────────────────────────────────── */
+/* Toggle section content on header click */
+$("#backupSection .section-header").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const content = document.querySelector("#backupSection .section-content");
+  content.classList.toggle("open");
+});
+
+$("#backupDownload").addEventListener("click", (e) => {
+  e.stopPropagation();
   window.location.href = "/api/backup";
+});
+
+$("#backupRestore").addEventListener("click", () => {
+  $("#restoreFileInput").click();
+});
+
+$("#restoreFileInput").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append("file", file);
+  try {
+    const res = await fetch("/api/restore", { method: "POST", body: formData });
+    if (!res.ok) {
+      const err = await res.json();
+      alert(`Restore failed: ${err.detail}`);
+      return;
+    }
+    alert("Restore successful! Reloading notes...");
+    loadCategories();
+    loadNotes();
+  } catch (err) {
+    alert(`Restore failed: ${err.message}`);
+  } finally {
+    e.target.value = "";
+  }
 });
 
 /* ── Sidebar ───────────────────────────────────────────────────────────────── */

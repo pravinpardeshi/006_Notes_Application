@@ -176,6 +176,21 @@ body {
   cursor: default;
   min-height: 38px;
 }
+#backupSection .section-header {
+  cursor: pointer;
+}
+.chevron {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+  color: var(--sidebar-text);
+  opacity: 0.6;
+}
+.sidebar.collapsed .chevron {
+  display: none;
+}
+#backupSection .section-header:has(+ .section-content.open) .chevron {
+  transform: rotate(180deg);
+}
 
 .section-icon {
   flex-shrink: 0;
@@ -201,13 +216,47 @@ body {
 }
 
 .backup-section {
-  cursor: pointer;
   margin-top: 0.5rem;
   border-top: 1px solid var(--sidebar-border);
   padding-top: 0.25rem;
 }
 .backup-section:hover .section-icon {
   color: #22c55e;
+}
+
+.section-content {
+  display: none;
+  padding: 0.25rem 0.5rem;
+}
+.sidebar:not(.collapsed) .section-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+/* Backup section uses manual toggle instead of sidebar-expand */
+#backupSection .section-content {
+  display: none;
+}
+#backupSection .section-content.open {
+  display: flex;
+}
+.sidebar-action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--sidebar-text);
+  transition: var(--sidebar-timing);
+}
+.sidebar-action:hover {
+  background: var(--sidebar-hover);
+  color: #22c55e;
+}
+.sidebar-action svg {
+  flex-shrink: 0;
 }
 
 .section-header h2 {
@@ -387,11 +436,13 @@ body {
 .pin-icon {
   color: #ef4444;
 }
-.pin-icon path {
+.pin-icon path,
+.pin-icon circle {
   transition: fill .2s ease-in-out;
   fill: currentColor;
 }
-.sidebar.collapsed .pin-icon path {
+.sidebar.collapsed .pin-icon path,
+.sidebar.collapsed .pin-icon circle {
   fill: transparent;
 }
 
@@ -472,7 +523,8 @@ body {
   padding: 0.4rem;
 }
 
-.sidebar.collapsed:hover .pin-icon path {
+.sidebar.collapsed:hover .pin-icon path,
+.sidebar.collapsed:hover .pin-icon circle {
   fill: transparent;
 }
 
@@ -1069,7 +1121,8 @@ body {
   .sidebar.collapsed .sub-category-list,
   .sidebar.collapsed .btn-icon { display: revert; }
   .sidebar.collapsed .sidebar-header { flex-direction: row; }
-  .sidebar.collapsed .pin-icon path { fill: currentColor; }
+  .sidebar.collapsed .pin-icon path,
+  .sidebar.collapsed .pin-icon circle { fill: currentColor; }
   .sidebar.collapsed .sidebar-section:hover::after { display: none; }
   .main-content {
     margin-left: 0 !important;
