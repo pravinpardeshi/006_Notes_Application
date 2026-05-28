@@ -75,23 +75,29 @@ themeToggle.addEventListener("click", () => {
 });
 
 /* ── Backup / Restore ──────────────────────────────────────────────────────── */
-/* Toggle section content on header click */
-$("#backupSection .section-header").addEventListener("click", (e) => {
-  e.stopPropagation();
-  const content = document.querySelector("#backupSection .section-content");
-  content.classList.toggle("open");
+/* Toggle popover in collapsed mode when clicking the section header */
+document.getElementById("backupSection")?.addEventListener("click", (e) => {
+  const header = e.target.closest(".section-header");
+  if (header && sidebar.classList.contains("collapsed")) {
+    document.getElementById("backupSection")?.classList.toggle("popover");
+  }
 });
 
-$("#backupDownload").addEventListener("click", (e) => {
+document.querySelector("#backupSection .chevron")?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  document.getElementById("backupSection")?.classList.toggle("accordion-open");
+});
+
+document.getElementById("backupDownload")?.addEventListener("click", (e) => {
   e.stopPropagation();
   window.location.href = "/api/backup";
 });
 
-$("#backupRestore").addEventListener("click", () => {
-  $("#restoreFileInput").click();
+document.getElementById("backupRestore")?.addEventListener("click", () => {
+  document.getElementById("restoreFileInput")?.click();
 });
 
-$("#restoreFileInput").addEventListener("change", async (e) => {
+document.getElementById("restoreFileInput")?.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const formData = new FormData();
@@ -122,6 +128,7 @@ function initSidebar() {
 sidebarToggle.addEventListener("click", () => {
   sidebar.classList.toggle("collapsed");
   localStorage.setItem("sidebarPinned", !sidebar.classList.contains("collapsed"));
+  document.getElementById("backupSection")?.classList.remove("popover");
 });
 
 /* ── All Notes ─────────────────────────────────────────────────────────────── */
