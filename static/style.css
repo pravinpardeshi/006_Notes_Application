@@ -713,8 +713,13 @@ body {
 }
 
 .note-card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
+  background: #dbeafe;
+  box-shadow: 0 12px 30px rgba(0,0,0,.12);
+  transform: scale(1.04);
+}
+
+[data-theme="dark"] .note-card:hover {
+  background: #1e3a5f;
 }
 
 .note-card .card-title {
@@ -847,7 +852,7 @@ body {
 }
 
 .notes-table tbody tr {
-  transition: background var(--transition);
+  transition: background var(--transition), transform .2s ease, box-shadow .2s ease;
   cursor: pointer;
   position: relative;
 }
@@ -873,6 +878,8 @@ body {
 
 .notes-table tbody tr:hover {
   background: #dbeafe;
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,.08);
 }
 
 [data-theme="dark"] .notes-table tbody tr:hover {
@@ -1011,14 +1018,15 @@ body {
 .modal-overlay.active { display: flex; }
 
 .modal {
+  position: relative;
   background: var(--surface);
   border-radius: var(--radius);
   width: 100%;
-  max-width: 560px;
+  max-width: 720px;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
-  padding: 1.5rem;
+  padding: 1.5rem 2.8rem;
   animation: modalIn .2s ease;
 }
 
@@ -1036,6 +1044,34 @@ body {
   margin-bottom: 1.25rem;
 }
 
+.modal-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  background: transparent;
+  border: none;
+  font-size: 3rem;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 0.3rem;
+  line-height: 1;
+  transition: opacity .15s ease;
+  user-select: none;
+}
+
+.modal-arrow-prev { left: 0.2rem; }
+.modal-arrow-next { right: 0.2rem; }
+
+.modal-arrow:hover:not(:disabled) {
+  opacity: 0.7;
+}
+
+.modal-arrow:disabled {
+  opacity: 0.15;
+  cursor: default;
+}
+
 .modal-header h2 {
   font-size: 1.15rem;
   font-weight: 600;
@@ -1044,6 +1080,7 @@ body {
 .modal-close {
   font-size: 1.5rem;
   color: var(--text-muted);
+  opacity: 1;
 }
 
 .form-group {

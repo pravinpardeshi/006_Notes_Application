@@ -9,6 +9,7 @@ const state = {
 };
 
 /* ── DOM refs ──────────────────────────────────────────────────────────────── */
+let currentNoteIndex = -1;
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 
@@ -41,6 +42,8 @@ const noteTags = $("#noteTags");
 const noteText = $("#noteText");
 const modalClose = $("#modalClose");
 const modalCancel = $("#modalCancel");
+const modalPrev = $("#modalPrev");
+const modalNext = $("#modalNext");
 
 const categoryModal = $("#categoryModal");
 const categoryForm = $("#categoryForm");
@@ -301,7 +304,10 @@ function renderNotesTable() {
 
   notesBody.querySelectorAll("tr[data-id]").forEach((row) => {
     const id = parseInt(row.dataset.id);
-    row.querySelector(".edit-note").addEventListener("click", () => openNoteModal(id));
+    row.querySelector(".edit-note").addEventListener("click", (e) => {
+      e.stopPropagation();
+      openNoteModal(id);
+    });
     row.querySelector(".archive-note").addEventListener("click", async (e) => {
       e.stopPropagation();
       const note = state.notes.find((n) => n.id === id);
@@ -313,7 +319,7 @@ function renderNotesTable() {
       await api.del(`/api/notes/${id}`);
       loadNotes();
     });
-    row.addEventListener("dblclick", () => openNoteModal(id));
+    row.addEventListener("click", () => openNoteModal(id));
   });
 }
 
@@ -381,7 +387,7 @@ async function openNoteModal(id = null) {
   if (id) {
     const note = await api.get(`/api/notes/${id}`);
     noteId.value = note.id;
-    modalTitle.textContent = "Edit Note";
+    modalTitle.textContent = "Edit Note — " + note.title;
     noteTitle.value = note.title;
     noteCategory.value = note.category_id || "";
     await populateSubCategoryDropdown(note.category_id);
@@ -391,7 +397,10 @@ async function openNoteModal(id = null) {
     noteColor.value = note.color || "#4f46e5";
     noteTags.value = note.tags || "";
     noteText.value = note.note_text;
+
+    currentNoteIndex = state.notes.findIndex((n) => n.id === id);
   } else {
+    currentNoteIndex = -1;
     if (state.selectedCategoryId) {
       noteCategory.value = state.selectedCategoryId;
       await populateSubCategoryDropdown(state.selectedCategoryId);
@@ -399,7 +408,19 @@ async function openNoteModal(id = null) {
     }
   }
 
+  updateNavButtons();
   noteModal.classList.add("active");
+}
+
+function updateNavButtons() {
+  const total = state.notes.length;
+  const hasNav = total > 1 && currentNoteIndex >= 0;
+  modalPrev.style.display = hasNav ? "" : "none";
+  modalNext.style.display = hasNav ? "" : "none";
+  if (hasNav) {
+    modalPrev.disabled = currentNoteIndex === 0;
+    modalNext.disabled = currentNoteIndex === total - 1;
+  }
 }
 
 function closeNoteModal() {
@@ -477,6 +498,17 @@ subCategoryForm.addEventListener("submit", async (e) => {
 
 /* ── Modal close handlers ──────────────────────────────────────────────────── */
 [modalClose, modalCancel].forEach((el) => el?.addEventListener("click", closeNoteModal));
+
+modalPrev.addEventListener("click", () => {
+  if (currentNoteIndex > 0) {
+    openNoteModal(state.notes[currentNoteIndex - 1].id);
+  }
+});
+modalNext.addEventListener("click", () => {
+  if (currentNoteIndex < state.notes.length - 1) {
+    openNoteModal(state.notes[currentNoteIndex + 1].id);
+  }
+});
 document.getElementById("categoryModalClose")?.addEventListener("click", () => closeModal(categoryModal));
 document.getElementById("categoryModalCancel")?.addEventListener("click", () => closeModal(categoryModal));
 document.getElementById("subCategoryModalClose")?.addEventListener("click", () => closeModal(subCategoryModal));
