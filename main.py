@@ -1,20 +1,24 @@
+import os
+import shutil
 import subprocess
 import tempfile
-from datetime import date
+from datetime import date, datetime
 from typing import List, Optional
 
-from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from database import DATABASE_URL, Base, engine, get_db
-from models import Category, Note, SubCategory
+from models import Category, Note, NoteImage, SubCategory
 from schemas import (
     CategoryCreate,
     CategoryResponse,
     NoteCreate,
+    NoteImageResponse,
     NoteResponse,
     NoteUpdate,
     SubCategoryCreate,
@@ -23,9 +27,24 @@ from schemas import (
 
 Base.metadata.create_all(bind=engine)
 
+# Sync all SERIAL sequences to prevent duplicate-key errors after restore/manual inserts
+with engine.connect() as conn:
+    for tbl in ["categories", "sub_categories", "notes", "note_images"]:
+        try:
+            conn.execute(
+                text(f"SELECT setval(pg_get_serial_sequence('{tbl}', 'id'), COALESCE(MAX(id), 1)) FROM {tbl}")
+            )
+        except Exception:
+            pass
+    conn.commit()
+
 app = FastAPI(title="Notes App")
 
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 templates = Jinja2Templates(directory="templates")
 
 
@@ -214,5 +233,95 @@ def delete_note(note_id: int, db: Session = Depends(get_db)):
     note = db.query(Note).filter(Note.id == note_id).first()
     if not note:
         raise HTTPException(404, "Note not found")
+    _cleanup_note_images(note.images)
     db.delete(note)
+    db.commit()
+
+
+def _cleanup_note_images(images: list[NoteImage]):
+    for img in images:
+        try:
+            if os.path.exists(img.filepath):
+                os.remove(img.filepath)
+        except Exception:
+            pass
+
+
+def _image_url(img: NoteImage) -> str:
+    return f"/uploads/{os.path.basename(img.filepath)}"
+
+
+# ── Note Image CRUD ──────────────────────────────────────────────────────────
+
+
+@app.get("/api/notes/{note_id}/images", response_model=List[NoteImageResponse])
+def list_note_images(note_id: int, db: Session = Depends(get_db)):
+    note = db.query(Note).filter(Note.id == note_id).first()
+    if not note:
+        raise HTTPException(404, "Note not found")
+    return [
+        NoteImageResponse(
+            id=img.id,
+            note_id=img.note_id,
+            filename=img.filename,
+            url=_image_url(img),
+            created_at=img.created_at,
+        )
+        for img in note.images
+    ]
+
+
+@app.post("/api/notes/{note_id}/images", response_model=List[NoteImageResponse], status_code=201)
+def upload_note_images(
+    note_id: int,
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+):
+    note = db.query(Note).filter(Note.id == note_id).first()
+    if not note:
+        raise HTTPException(404, "Note not found")
+
+    saved = []
+    for file in files:
+        if not file.content_type or not file.content_type.startswith("image/"):
+            raise HTTPException(400, f"File '{file.filename}' is not an image")
+
+        ts = datetime.now().strftime("%Y%m%d%H%M%S%f")
+        safe_name = f"{ts}_{file.filename}"
+        filepath = os.path.join(UPLOAD_DIR, safe_name)
+
+        with open(filepath, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+
+        img = NoteImage(note_id=note_id, filename=file.filename, filepath=filepath)
+        db.add(img)
+        db.commit()
+        db.refresh(img)
+        saved.append(
+            NoteImageResponse(
+                id=img.id,
+                note_id=img.note_id,
+                filename=img.filename,
+                url=_image_url(img),
+                created_at=img.created_at,
+            )
+        )
+
+    return saved
+
+
+@app.delete("/api/notes/{note_id}/images/{image_id}", status_code=204)
+def delete_note_image(note_id: int, image_id: int, db: Session = Depends(get_db)):
+    note = db.query(Note).filter(Note.id == note_id).first()
+    if not note:
+        raise HTTPException(404, "Note not found")
+    img = db.query(NoteImage).filter(NoteImage.id == image_id, NoteImage.note_id == note_id).first()
+    if not img:
+        raise HTTPException(404, "Image not found")
+    try:
+        if os.path.exists(img.filepath):
+            os.remove(img.filepath)
+    except Exception:
+        pass
+    db.delete(img)
     db.commit()
